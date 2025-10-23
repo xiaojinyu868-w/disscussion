@@ -1,0 +1,129 @@
+import { Injectable } from "@nestjs/common";
+import { TingwuService } from "../tingwu/tingwu.service";
+import { CreateSessionDto } from "./session.dto";
+import { v4 as uuid } from "uuid";
+import { PollerService } from "../task-poller/poller.service";
+
+type Transcript = {
+  id: string;
+  speakerId: string;
+  startMs: number;
+  endMs: number;
+  text: string;
+};
+
+@Injectable()
+export class SessionService {
+  private sessions = new Map<
+    string,
+    { taskId: string; meetingJoinUrl: string }
+  >();
+  private transcripts = new Map<string, Transcript[]>();
+  private summaries = new Map<string, any[]>();
+
+  constructor(
+    private readonly tingwuService: TingwuService,
+    private readonly pollerService: PollerService
+  ) {}
+
+  async createRealtimeSession(body: CreateSessionDto) {
+    const sessionId = uuid();
+    const { taskId, meetingJoinUrl } =
+      await this.tingwuService.createRealtimeTask(body);
+
+    this.sessions.set(sessionId, { taskId, meetingJoinUrl });
+    this.pollerService.registerTask(sessionId, taskId, async (payload) => {
+      if (payload.transcription?.length) {
+        const existing = this.transcripts.get(sessionId) ?? [];
+        const map = new Map<string, Transcript>();
+        [...existing, ...payload.transcription].forEach((segment) => {
+          map.set(segment.id, segment);
+        });
+        const merged = Array.from(map.values()).sort(
+          (a, b) => a.startMs - b.startMs
+        );
+        this.transcripts.set(sessionId, merged);
+      }
+      if (payload.summaries?.length) {
+        const existing = this.summaries.get(sessionId) ?? [];
+        const combined = new Map<string, any>();
+        [...existing, ...payload.summaries].forEach((card) => {
+          combined.set(card.id, card);
+        });
+        this.summaries.set(sessionId, Array.from(combined.values()));
+      }
+    });
+
+    return {
+      sessionId,
+      taskId,
+      meetingJoinUrl,
+    };
+  }
+
+  async getTranscripts(sessionId: string) {
+    return {
+      sessionId,
+      transcription: this.transcripts.get(sessionId) ?? [],
+    };
+  }
+
+  async getSummaries(sessionId: string) {
+    return {
+      sessionId,
+      summaries: this.summaries.get(sessionId) ?? [],
+    };
+  }
+
+  async triggerSkill(sessionId: string, skill: "inner_os" | "brainstorm") {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+    const result = await this.tingwuService.triggerCustomPrompt(
+      session.taskId,
+      skill
+    );
+    const cards = this.normalizeCustomPrompt(result, skill, session.taskId);
+    if (cards.length) {
+      const existing = this.summaries.get(sessionId) ?? [];
+      const combined = new Map<string, any>();
+      [...existing, ...cards].forEach((card) => {
+        combined.set(card.id, card);
+      });
+      this.summaries.set(sessionId, Array.from(combined.values()));
+    }
+    return {
+      cards,
+    };
+  }
+
+  private normalizeCustomPrompt(
+    raw: any,
+    skill: "inner_os" | "brainstorm",
+    taskId: string
+  ) {
+    const data = raw?.Data ?? raw?.data ?? {};
+    const result =
+      data.Result ??
+      data?.results ??
+      raw?.result ??
+      raw ??
+      {};
+    const items: any[] =
+      result?.Items ??
+      result?.items ??
+      result ??
+      [];
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items.map((item: any, index: number) => ({
+      id: `${taskId}-${skill}-${index}`,
+      type: skill === "inner_os" ? "inner_os" : "brainstorm",
+      title: skill === "inner_os" ? "内心OS" : "头脑风暴",
+      content: item,
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+}
