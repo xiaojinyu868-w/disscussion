@@ -1,98 +1,99 @@
-# Meeting Snapshot MVP
+# 会议快照 MVP
 
-React Native + NestJS implementation of the “会议快照” MVP. The project recreates the reference mobile UI, streams real‑time audio to Alibaba Tingwu, and surfaces AI outputs such as live transcription, summaries, “内心 OS”, and “头脑风暴”.
+这是一个使用 React Native（前端）和 NestJS（后端）开发的「会议快照」最小可行产品。项目复刻了参考 App 的深色界面，通过阿里云通义听悟实现实时语音转写、AI 摘要、内心 OS、头脑风暴等功能。
 
-## Repository Structure
+## 目录结构
 
 ```
-frontend/   # Expo React Native app
-backend/    # NestJS service (Tingwu proxy, polling, skills)
-specs/      # Requirements, design, tasks, QA notes
+frontend/   # Expo React Native 客户端
+backend/    # NestJS 服务端（通义听悟代理、轮询、技能触发）
+specs/      # 需求、设计、任务分解、QA 说明
 ```
 
-## Features
-- **UI 复刻**：深色录音面板、实时转写/AI 总结标签页、技能按钮。
-- **实时推流**：单 WebSocket 连接推送 16k PCM 音频并消费下行增量转写。
-- **兜底轮询**：后端每 5 秒调用 Tingwu `GET /tasks/{TaskId}` 补齐转写与摘要。
-- **AI 能力**：展示全文/发言摘要、关键词、章节速览；一键触发内心 OS、头脑风暴。
-- **可扩展设计**：文档化技术方案、任务拆解、QA checklist。
+## 功能亮点
+- **界面复刻**：录音面板、实时转写/AI 总结标签、技能按钮布局与参考图一致。
+- **实时推流**：单 WebSocket 连接完成 16k PCM 音频推送与增量转写下行。
+- **兜底轮询**：后端每 5 秒调用通义听悟任务查询，补齐转写与摘要并持久化。
+- **AI 能力**：展示全文摘要、发言总结、关键词、章节速览；支持一键触发内心 OS、头脑风暴。
+- **完整文档**：需求、技术方案、实施计划、API 要求、QA checklist 已整理。
 
-## Prerequisites
-- Node.js ≥ 18
-- npm ≥ 9
-- Expo CLI (`npm install -g expo-cli`) 建议安装
-- 阿里云通义听悟账号与 API 凭据（AccessKeyId/Secret，AppKey）
-- 可选：Android/iOS 模拟器或实体设备安装 Expo Go
+## 准备工作
+- Node.js ≥ 18，npm ≥ 9
+- 全局安装 Expo CLI（`npm install -g expo-cli`，可选）
+- 阿里云通义听悟账号，并获取 AccessKeyId/Secret、AppKey
+- Android 或 iOS 模拟器，或实体设备安装 Expo Go
 
-## Backend Setup (`backend/`)
+## 后端运行（`backend/`）
 
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file (or export env vars):
+在项目根目录创建 `.env`（或使用系统环境变量）：
 
 ```
 PORT=4000
 TINGWU_REGION=cn-beijing
-TINGWU_ACCESS_KEY_ID=your-ak
-TINGWU_ACCESS_KEY_SECRET=your-secret
-TINGWU_APP_KEY=your-appkey
+TINGWU_ACCESS_KEY_ID=你的AK
+TINGWU_ACCESS_KEY_SECRET=你的Secret
+TINGWU_APP_KEY=你的AppKey
 POLLING_INTERVAL_MS=5000
 ```
 
-Then run:
+启动服务：
 
 ```bash
 npm start
 ```
 
-The API exposes:
-- `POST /sessions` → `{ sessionId, taskId, meetingJoinUrl }`
-- `GET /sessions/:id/transcripts`
-- `GET /sessions/:id/summaries`
-- `POST /sessions/:id/skills/:skillType` (`skillType = inner_os | brainstorm`)
+开放接口：
+- `POST /sessions` → 创建实时任务，返回 `{ sessionId, taskId, meetingJoinUrl }`
+- `GET /sessions/:id/transcripts` → 获取当前会话的转写段落
+- `GET /sessions/:id/summaries` → 获取 AI 摘要/要点/章节等卡片
+- `POST /sessions/:id/skills/:skillType` → 触发自定义技能（`inner_os` / `brainstorm`）
 
-## Frontend Setup (`frontend/`)
+## 前端运行（`frontend/`）
 
 ```bash
 cd frontend
 npm install
 ```
 
-Set backend URL (e.g. in `.env` or shell):
+设置后端地址（`.env` 或命令行）：
 
 ```
 EXPO_PUBLIC_API_URL=http://localhost:4000
 ```
 
-Start Expo:
+启动 Expo：
 
 ```bash
 npm run start
 ```
 
-Use Expo Go 或 模拟器扫描 QR 即可体验：
-- 点击“开始录制”推流音频 → 实时转写更新。
-- 切换“AI总结”标签查看摘要、要点。
-- 点击“内心OS”“头脑风暴”触发 Custom Prompt，5–10s 内返回卡片。
+使用 Expo Go 或模拟器扫码打开。操作流程：
+1. 点击“开始录制”后，App 会推流音频并实时刷新“实时转写”。
+2. 切换到“AI总结”标签，可查看通义听悟返回的摘要、要点、章节。
+3. 点击“内心OS”或“头脑风暴”，约 5–10 秒生成卡片并显示在摘要列表。
 
-## QA & Verification
-参阅 `specs/spec_product/qa.md`，包括：
-- 截图比对界面（录音状态、实时转写、AI 总结）。
-- 检查后端日志：任务创建、轮询成功、技能触发。
-- 端到端测试：录音 30 秒、确认实时转写刷新、摘要更新、技能卡片生成。
+## QA 验收
+详细流程见 `specs/spec_product/qa.md`，主要包括：
+1. 界面截图与参考图比对（录音状态、转写列表、总结卡片）。
+2. 检查后端日志（任务创建、轮询成功、技能触发）。
+3. 端到端测试：录音 30 秒 → 实时转写刷新 → AI 总结更新 → 技能卡片生成。
+4. 重启前端后调用 API，确认历史转写/摘要可恢复。
 
-## Development Notes
-- 文档与拆解：`specs/spec_product/requirement.md`, `design.md`, `tasks.md`, `llm_api_requirements.md`.
-- `useTingwuRealtime` 组合了音频上行与下行数据解析，`PollerService` 处理兜底轮询。
-- 自定义 Prompt 模板位于 `llm_api_requirements.md` 和 `TingwuService.triggerCustomPrompt`。
-- 若需离线补录或更多技能，可在 `TingwuService` 中扩展参数。
+## 文档索引
+- 需求：`specs/spec_product/requirement.md`
+- 技术方案：`specs/spec_product/design.md`
+- 任务拆分：`specs/spec_product/tasks.md`
+- API 对齐：`specs/spec_mvp/llm_api_requirements.md`
+- QA 计划：`specs/spec_product/qa.md`
 
-## Next Steps
-- 结合真实凭据联调、观察费用与限流策略。
-- 如需正式发布 APK/IPA，可使用 Expo EAS Build。
-- 增强容错（断线提示、请求队列）和持久化（数据库替换内存存储）。
+## 后续计划
+- 使用真实凭据联调并观察费用/限流策略。
+- 若需发布正式安装包，可使用 Expo EAS Build 生成 APK/IPA。
+- 增强断线重连、错误提示、数据持久化（替换内存存储为数据库）。
 
-欢迎根据需求继续扩展。***
+如需扩展自定义技能或离线补录，可在 `TingwuService` 中追加参数配置。欢迎根据业务需求继续迭代。
