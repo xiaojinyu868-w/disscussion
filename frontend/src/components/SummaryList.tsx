@@ -1,7 +1,18 @@
-import { View, Text, StyleSheet } from "react-native";
+﻿import { View, Text, StyleSheet } from "react-native";
 import { colors } from "@/theme/colors";
 import { typography } from "@/theme/typography";
 import { SummaryCard } from "@/store/useSessionStore";
+
+const formatUpdatedAt = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 type Props = {
   cards: SummaryCard[];
@@ -11,7 +22,7 @@ const SummaryList = ({ cards }: Props) => {
   if (!cards.length) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>等待 AI 总结更新...</Text>
+        <Text style={styles.emptyText}>等待 AI 总结更新…</Text>
       </View>
     );
   }
@@ -20,11 +31,11 @@ const SummaryList = ({ cards }: Props) => {
     <>
       {cards.map((card) => (
         <View key={card.id} style={styles.card}>
-          {card.title ? (
-            <Text style={styles.title}>{card.title}</Text>
-          ) : null}
+          {card.title ? <Text style={styles.title}>{card.title}</Text> : null}
           {renderContent(card.content)}
-          <Text style={styles.timestamp}>{card.updatedAt}</Text>
+          <Text style={styles.timestamp}>
+            {formatUpdatedAt(card.updatedAt)}
+          </Text>
         </View>
       ))}
     </>
@@ -35,14 +46,14 @@ const renderContent = (content: string | string[] | Record<string, unknown>) => 
   if (Array.isArray(content)) {
     return content.map((item, index) => (
       <Text key={index} style={styles.body}>
-        • {item}
+        <Text style={styles.bullet}>•</Text> {item}
       </Text>
     ));
   }
   if (typeof content === "object" && content !== null) {
     return Object.entries(content).map(([key, value]) => (
       <Text key={key} style={styles.body}>
-        {key}: {String(value)}
+        <Text style={styles.bodyLabel}>{key}</Text> {String(value)}
       </Text>
     ));
   }
@@ -53,31 +64,49 @@ const styles = StyleSheet.create({
   empty: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 24,
+    paddingVertical: 40,
   },
   emptyText: {
+    ...typography.body,
     color: colors.textSecondary,
   },
   card: {
     backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.panelBorder,
+    shadowColor: "#CCD5F0",
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 8,
   },
   title: {
     ...typography.heading,
-    color: "#4C3B24",
-    marginBottom: 8,
+    color: colors.textPrimary,
+    marginBottom: 14,
   },
   body: {
     ...typography.body,
-    color: "#463C2B",
-    marginBottom: 6,
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  bodyLabel: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  bullet: {
+    color: colors.accent,
   },
   timestamp: {
     ...typography.caption,
-    marginTop: 8,
+    color: colors.textMuted,
+    marginTop: 12,
+    alignSelf: "flex-end",
   },
 });
 
 export default SummaryList;
+

@@ -11,7 +11,7 @@ const TranscriptionList = ({ segments }: Props) => {
   if (!segments.length) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>等待实时转写...</Text>
+        <Text style={styles.emptyText}>等待实时转写…</Text>
       </View>
     );
   }
@@ -19,9 +19,16 @@ const TranscriptionList = ({ segments }: Props) => {
     <>
       {segments.map((segment) => (
         <View style={styles.segment} key={segment.id}>
-          <Text style={styles.segmentTimestamp}>
-            {formatTimestamp(segment.startMs)}
-          </Text>
+          <View style={styles.segmentHeader}>
+            <View style={styles.speakerChip}>
+              <Text style={styles.speakerText}>
+                {segment.speakerId ? `发言者 ${segment.speakerId}` : "即时转写"}
+              </Text>
+            </View>
+            <Text style={styles.segmentTimestamp}>
+              {formatTimestamp(segment.startMs)}
+            </Text>
+          </View>
           <Text style={styles.segmentText}>{segment.text}</Text>
         </View>
       ))}
@@ -42,24 +49,49 @@ const styles = StyleSheet.create({
   empty: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 24,
+    paddingVertical: 40,
   },
   emptyText: {
+    ...typography.body,
     color: colors.textSecondary,
   },
   segment: {
-    backgroundColor: colors.bubbleBackground,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 22,
+    marginBottom: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.panelBorder,
+    shadowColor: "#C6D0ED",
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 6,
+  },
+  segmentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
+  },
+  speakerChip: {
+    backgroundColor: colors.accentMuted,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  speakerText: {
+    ...typography.label,
+    color: colors.accent,
   },
   segmentTimestamp: {
     ...typography.caption,
-    marginBottom: 8,
+    color: colors.textMuted,
   },
   segmentText: {
     ...typography.body,
-    color: "#3E3830",
+    color: colors.textPrimary,
   },
 });
 

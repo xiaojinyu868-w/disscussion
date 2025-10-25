@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
 export type SpeakerSegment = {
@@ -33,12 +33,14 @@ type SessionState = {
   isRecording: boolean;
   transcription: SpeakerSegment[];
   summaryCards: SummaryCard[];
+  taskStatus?: string;
   skillState: Record<"inner_os" | "brainstorm", SkillState>;
   setTask: (sessionId: string, taskId: string, meetingJoinUrl: string) => void;
   toggleRecording: (value: boolean) => void;
   appendTranscription: (segments: SpeakerSegment[]) => void;
   upsertSummaryCards: (cards: SummaryCard[]) => void;
   setSkillState: (skill: "inner_os" | "brainstorm", state: SkillState) => void;
+  setTaskStatus: (status?: string) => void;
   reset: () => void;
 };
 
@@ -50,6 +52,7 @@ export const useSessionStore = create<SessionState>()(
     isRecording: false,
     transcription: [],
     summaryCards: [],
+    taskStatus: undefined,
     skillState: {
       inner_os: "idle",
       brainstorm: "idle",
@@ -59,6 +62,7 @@ export const useSessionStore = create<SessionState>()(
         sessionId,
         taskId,
         meetingJoinUrl,
+        taskStatus: "NEW",
       }),
     toggleRecording: (value) =>
       set({
@@ -89,6 +93,10 @@ export const useSessionStore = create<SessionState>()(
         );
         return { summaryCards: sorted };
       }),
+    setTaskStatus: (status) =>
+      set({
+        taskStatus: status,
+      }),
     setSkillState: (skill, value) =>
       set((state) => ({
         skillState: {
@@ -104,6 +112,7 @@ export const useSessionStore = create<SessionState>()(
         isRecording: false,
         transcription: [],
         summaryCards: [],
+        taskStatus: undefined,
         skillState: {
           inner_os: "idle",
           brainstorm: "idle",

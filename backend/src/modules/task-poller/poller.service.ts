@@ -5,6 +5,7 @@ import { ConfigService } from "@nestjs/config";
 type PollerCallback = (payload: {
   transcription: any[];
   summaries: any[];
+  taskStatus?: string;
 }) => Promise<void>;
 
 @Injectable()

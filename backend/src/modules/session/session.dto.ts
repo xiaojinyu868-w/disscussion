@@ -8,3 +8,8 @@ export class CreateSessionDto {
   @IsString()
   topic?: string;
 }
+
+export class UploadAudioChunkDto {
+  @IsString()
+  chunk: string;
+}

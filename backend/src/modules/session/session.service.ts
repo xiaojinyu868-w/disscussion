@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { TingwuService } from "../tingwu/tingwu.service";
 import { CreateSessionDto } from "./session.dto";
 import { v4 as uuid } from "uuid";
 import { PollerService } from "../task-poller/poller.service";
+import { AudioRelayService } from "../tingwu/audio-relay.service";
 
 type Transcript = {
   id: string;
@@ -20,10 +21,12 @@ export class SessionService {
   >();
   private transcripts = new Map<string, Transcript[]>();
   private summaries = new Map<string, any[]>();
+  private taskStatuses = new Map<string, string | undefined>();
 
   constructor(
     private readonly tingwuService: TingwuService,
-    private readonly pollerService: PollerService
+    private readonly pollerService: PollerService,
+    private readonly audioRelayService: AudioRelayService
   ) {}
 
   async createRealtimeSession(body: CreateSessionDto) {
@@ -32,6 +35,8 @@ export class SessionService {
       await this.tingwuService.createRealtimeTask(body);
 
     this.sessions.set(sessionId, { taskId, meetingJoinUrl });
+    this.taskStatuses.set(sessionId, "NEW");
+    this.audioRelayService.create(sessionId, meetingJoinUrl);
     this.pollerService.registerTask(sessionId, taskId, async (payload) => {
       if (payload.transcription?.length) {
         const existing = this.transcripts.get(sessionId) ?? [];
@@ -52,6 +57,9 @@ export class SessionService {
         });
         this.summaries.set(sessionId, Array.from(combined.values()));
       }
+      if (payload.taskStatus) {
+        this.taskStatuses.set(sessionId, payload.taskStatus);
+      }
     });
 
     return {
@@ -61,10 +69,31 @@ export class SessionService {
     };
   }
 
+  async ingestAudioChunk(sessionId: string, base64Chunk: string) {
+    if (!this.sessions.has(sessionId)) {
+      throw new NotFoundException("Session not found");
+    }
+    const buffer = Buffer.from(base64Chunk, "base64");
+    await this.audioRelayService.write(sessionId, buffer);
+  }
+
+  async completeSession(sessionId: string) {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.audioRelayService.stop(sessionId);
+    this.pollerService.unregisterTask(sessionId);
+    await this.tingwuService.stopRealtimeTask(session.taskId);
+    this.taskStatuses.set(sessionId, "COMPLETED");
+    return { ok: true };
+  }
+
   async getTranscripts(sessionId: string) {
     return {
       sessionId,
       transcription: this.transcripts.get(sessionId) ?? [],
+      taskStatus: this.taskStatuses.get(sessionId),
     };
   }
 

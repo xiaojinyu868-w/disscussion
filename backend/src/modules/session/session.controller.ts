@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { SessionService } from "./session.service";
-import { CreateSessionDto } from "./session.dto";
+import { CreateSessionDto, UploadAudioChunkDto } from "./session.dto";
 
 @Controller("sessions")
 export class SessionController {
@@ -27,5 +27,19 @@ export class SessionController {
     @Param("skillType") skillType: "inner_os" | "brainstorm"
   ) {
     return this.sessionService.triggerSkill(id, skillType);
+  }
+
+  @Post(":id/audio")
+  async uploadAudioChunk(
+    @Param("id") id: string,
+    @Body() body: UploadAudioChunkDto
+  ) {
+    await this.sessionService.ingestAudioChunk(id, body.chunk);
+    return { ok: true };
+  }
+
+  @Post(":id/complete")
+  async completeSession(@Param("id") id: string) {
+    return this.sessionService.completeSession(id);
   }
 }

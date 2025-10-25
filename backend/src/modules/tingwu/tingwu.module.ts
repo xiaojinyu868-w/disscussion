@@ -1,14 +1,9 @@
 import { Module } from "@nestjs/common";
-import { HttpModule } from "@nestjs/axios";
 import { TingwuService } from "./tingwu.service";
+import { AudioRelayService } from "./audio-relay.service";
 
 @Module({
-  imports: [
-    HttpModule.register({
-      timeout: 10000,
-    }),
-  ],
-  providers: [TingwuService],
-  exports: [TingwuService],
+  providers: [TingwuService, AudioRelayService],
+  exports: [TingwuService, AudioRelayService],
 })
 export class TingwuModule {}
